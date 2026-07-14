@@ -1,0 +1,262 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: #07090D;
+  --color-foreground: #F8FAFC;
+  
+  --color-card: rgba(18, 22, 30, 0.75);
+  --color-card-foreground: #F8FAFC;
+  
+  --color-popover: rgba(18, 22, 30, 0.95);
+  --color-popover-foreground: #F8FAFC;
+  
+  --color-primary: #38BDF8;
+  --color-primary-foreground: #07090D;
+  
+  --color-secondary: #0A0D12;
+  --color-secondary-foreground: #94A3B8;
+  
+  --color-muted: rgba(255, 255, 255, 0.05);
+  --color-muted-foreground: #94A3B8;
+  
+  --color-accent: #60A5FA;
+  --color-accent-foreground: #07090D;
+  
+  --color-destructive: #FF4D6D;
+  --color-destructive-foreground: #F8FAFC;
+  
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-input: rgba(255, 255, 255, 0.06);
+  --color-ring: #38BDF8;
+  
+  --color-chart-1: #38BDF8; /* Cyan */
+  --color-chart-2: #60A5FA; /* Blue */
+  --color-chart-3: #F59E0B; /* Amber */
+  --color-chart-4: #FF4D6D; /* Red */
+  --color-chart-5: #22C55E; /* Green */
+  
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-info: #38BDF8;
+  --color-critical: #FF4D6D;
+  
+  --color-surface: rgba(18, 22, 30, 0.75);
+  --color-surface-hover: rgba(24, 30, 42, 0.85);
+  
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Minimal Glassmorphism */
+  .glass {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .glass-strong {
+    background: rgba(10, 13, 18, 0.8);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Cards */
+  .glass-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Interactive Elements */
+  button, a {
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Primary Buttons */
+  button.bg-primary {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: none;
+    box-shadow: none;
+  }
+  
+  button.bg-primary:hover {
+    background: #7DD3FC; /* lighter cyan */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+  }
+
+  /* Secondary Buttons */
+  button.bg-secondary, .glass-card button.bg-secondary\/60 {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--color-foreground);
+    backdrop-filter: blur(12px);
+  }
+  
+  button.bg-secondary:hover, .glass-card button.bg-secondary\/60:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+  }
+
+  /* Form / Inputs - focus ring */
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.4) !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2) !important;
+  }
+
+  /* Sidebar Active Item */
+  .bg-primary\/10 {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: none !important;
+    border-left: 2px solid var(--color-primary) !important;
+    box-shadow: none !important;
+  }
+
+  .bg-primary\/10:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* System Active Badge */
+  .bg-green-500\/5 {
+    background: transparent !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+    box-shadow: none !important;
+    animation: none !important;
+  }
+
+  /* Alerts / Hotspots - Use RED only for these */
+  .text-red-400 {
+    color: var(--color-destructive);
+    text-shadow: none;
+  }
+
+  /* KPI Card Adjustments (Simulating changes via CSS) */
+  .text-3xl {
+    font-size: 2.25rem !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.03em !important;
+  }
+  .text-muted-foreground {
+    opacity: 0.8;
+  }
+  /* Remove KPI Icon backgrounds */
+  .bg-primary\/20, .bg-secondary\/50 {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  /* Table styling */
+  table tr {
+    transition: all 0.2s ease;
+  }
+  table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* Animations */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+}
+
+/* Base icon styles */
+svg {
+  stroke-width: 1.5;
+}
+.text-primary > svg, svg.text-primary {
+  color: var(--color-primary);
+  filter: none;
+}
+.text-accent {
+  color: var(--color-accent);
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  background: #0A0D12 !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(18, 22, 30, 0.75) !important;
+  color: #F8FAFC !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(18, 22, 30, 0.95) !important;
+  color: #F8FAFC !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(14px) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(18, 22, 30, 0.95) !important;
+}

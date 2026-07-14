@@ -1,0 +1,7 @@
+{
+  "client": "frontend",
+  "app_sail": {
+    "targets": ["backend"]
+  },
+  "datastore": "datastore"
+}

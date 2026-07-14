@@ -1,0 +1,109 @@
+[
+  {
+    "table_name": "District",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true, "is_unique": true },
+      { "column_name": "region", "data_type": "varchar", "max_length": 100, "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "PoliceUnit",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "district_id", "data_type": "foreign key", "parent_table_name": "District", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "PoliceStation",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "latitude", "data_type": "double" },
+      { "column_name": "longitude", "data_type": "double" },
+      { "column_name": "unit_id", "data_type": "foreign key", "parent_table_name": "PoliceUnit", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Officer",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "badge_number", "data_type": "varchar", "max_length": 100, "is_mandatory": true, "is_unique": true },
+      { "column_name": "rank", "data_type": "varchar", "max_length": 100, "is_mandatory": true },
+      { "column_name": "station_id", "data_type": "foreign key", "parent_table_name": "PoliceStation", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "CrimeHead",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true, "is_unique": true },
+      { "column_name": "category", "data_type": "varchar", "max_length": 255, "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "CaseMaster",
+    "columns": [
+      { "column_name": "fir_number", "data_type": "varchar", "max_length": 100, "is_mandatory": true, "is_unique": true },
+      { "column_name": "reported_at", "data_type": "datetime", "is_mandatory": true },
+      { "column_name": "status", "data_type": "varchar", "max_length": 100, "is_mandatory": true },
+      { "column_name": "description", "data_type": "text", "max_length": 2000 },
+      { "column_name": "latitude", "data_type": "double" },
+      { "column_name": "longitude", "data_type": "double" },
+      { "column_name": "station_id", "data_type": "foreign key", "parent_table_name": "PoliceStation", "parent_column_name": "ROWID", "is_mandatory": true },
+      { "column_name": "crime_head_id", "data_type": "foreign key", "parent_table_name": "CrimeHead", "parent_column_name": "ROWID", "is_mandatory": true },
+      { "column_name": "officer_id", "data_type": "foreign key", "parent_table_name": "Officer", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Victim",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "age", "data_type": "bigint" },
+      { "column_name": "gender", "data_type": "varchar", "max_length": 50 },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Accused",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "age", "data_type": "bigint" },
+      { "column_name": "gender", "data_type": "varchar", "max_length": 50 },
+      { "column_name": "status", "data_type": "varchar", "max_length": 100, "is_mandatory": true },
+      { "column_name": "arrest_date", "data_type": "datetime" },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Witness",
+    "columns": [
+      { "column_name": "name", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "statement", "data_type": "text", "max_length": 2000 },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Evidence",
+    "columns": [
+      { "column_name": "item_type", "data_type": "varchar", "max_length": 255, "is_mandatory": true },
+      { "column_name": "description", "data_type": "text", "max_length": 2000 },
+      { "column_name": "collected_at", "data_type": "datetime", "is_mandatory": true },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Vehicle",
+    "columns": [
+      { "column_name": "registration_number", "data_type": "varchar", "max_length": 100 },
+      { "column_name": "make", "data_type": "varchar", "max_length": 100 },
+      { "column_name": "model", "data_type": "varchar", "max_length": 100 },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  },
+  {
+    "table_name": "Chargesheet",
+    "columns": [
+      { "column_name": "chargesheet_number", "data_type": "varchar", "max_length": 100, "is_mandatory": true, "is_unique": true },
+      { "column_name": "filed_date", "data_type": "datetime", "is_mandatory": true },
+      { "column_name": "case_id", "data_type": "foreign key", "parent_table_name": "CaseMaster", "parent_column_name": "ROWID", "is_mandatory": true }
+    ]
+  }
+]

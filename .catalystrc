@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "project": 1,
+    "env": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "50483000000013048",
+      "name": "MOSAIC",
+      "domain": {
+        "id": "50043946419",
+        "name": "mosaic-60078042504.development"
+      },
+      "timezone": "Asia/Kolkata",
+      "env": [
+        {
+          "idx": 1,
+          "id": "60078042504",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}
