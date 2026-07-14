@@ -1,8 +1,10 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/server/backend/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export async function fetchFromAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`[API REQUEST] URL: ${url}`);
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -10,13 +12,17 @@ export async function fetchFromAPI<T>(endpoint: string, options?: RequestInit): 
       },
     });
 
+    console.log(`[API RESPONSE] HTTP STATUS: ${response.status} for URL: ${url}`);
+
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log(`[API RESPONSE JSON] ${url}:`, JSON.stringify(data, null, 2));
+    return data;
   } catch (error) {
-    console.error(`Failed to fetch from ${endpoint}:`, error);
+    console.error(`[API ERROR] Failed to fetch from ${endpoint}:`, error);
     throw error;
   }
 }

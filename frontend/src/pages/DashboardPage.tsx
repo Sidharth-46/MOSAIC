@@ -72,8 +72,8 @@ export default function DashboardPage() {
               <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
               <Tooltip {...chartTooltipStyle} />
               <Area type="monotone" dataKey="total" stroke="#38BDF8" fill="url(#gradTotal)" strokeWidth={2} dot={false} />
-              <Area type="monotone" dataKey="theft" stroke="#FF4D6D" fill="none" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-              <Area type="monotone" dataKey="assault" stroke="#F59E0B" fill="none" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              <Area type="monotone" dataKey="burglary" name="Property Crimes" stroke="#FF4D6D" fill="none" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              <Area type="monotone" dataKey="assault" name="Violent Crimes" stroke="#F59E0B" fill="none" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>

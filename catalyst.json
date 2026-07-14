@@ -1,7 +1,11 @@
 {
-  "client": "frontend",
-  "app_sail": {
-    "targets": ["backend"]
-  },
+  "client": "client",
+  "appsail": [
+    {
+      "name": "backend",
+      "source": "backend",
+      "build_path": "backend"
+    }
+  ],
   "datastore": "datastore"
 }

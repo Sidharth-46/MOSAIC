@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn catalyst deploy --only datastore
+expect {
+    -re ".*(y/N|Y/n|yes/no|y/n).*" {
+        send "y\r"
+        exp_continue
+    }
+    eof
+}

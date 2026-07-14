@@ -17,7 +17,7 @@ import SettingsPage from '@/pages/SettingsPage'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
@@ -36,6 +36,7 @@ function App() {
           <Route path="/patrol" element={<PatrolPlannerPage />} />
           <Route path="/responsible-ai" element={<ResponsibleAIPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

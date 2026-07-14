@@ -55,15 +55,18 @@ export function useAnalytics() {
           fetchFromAPI<any>('/analytics')
         ]);
         
-        setData({
-          dashboardKPIs: dashboardRes.kpis || defaultDashboardKPIs,
-          categoryData: analyticsRes.categoryData || defaultCategoryData,
-          hourlyData: analyticsRes.hourlyData || defaultHourlyData,
-          trendData: analyticsRes.trendData || defaultTrendData,
-          districtStats: analyticsRes.districtStats || defaultDistrictStats,
-          seasonalData: analyticsRes.seasonalData || defaultSeasonalData,
-          weeklyData: analyticsRes.weeklyData || defaultWeeklyData,
-        });
+        const parsedData = {
+          dashboardKPIs: dashboardRes.kpis || dashboardRes, // Some APIs might return array directly
+          categoryData: analyticsRes.categoryData || analyticsRes,
+          hourlyData: analyticsRes.hourlyData || [],
+          trendData: analyticsRes.trendData || [],
+          districtStats: analyticsRes.districtStats || [],
+          seasonalData: analyticsRes.seasonalData || [],
+          weeklyData: analyticsRes.weeklyData || [],
+        };
+        console.log('[DASHBOARD PARSED DATA]:', parsedData);
+        
+        setData(parsedData as any);
       } catch (err) {
         console.error('Failed to load analytics:', err);
       } finally {

@@ -14,13 +14,16 @@ class CatalystClient:
     """
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, request=None):
         if cls._instance is None:
             cls._instance = super(CatalystClient, cls).__new__(cls)
             cls._instance.is_configured = False
             try:
                 # Attempt to initialize Catalyst SDK
-                cls._instance.app = zcatalyst_sdk.initialize()
+                if request:
+                    cls._instance.app = zcatalyst_sdk.initialize(req=request)
+                else:
+                    cls._instance.app = zcatalyst_sdk.initialize()
                 cls._instance.zcql = cls._instance.app.zcql()
                 cls._instance.is_configured = True
             except Exception as e:
@@ -35,7 +38,7 @@ class CatalystClient:
                 return self.zcql.execute_query(query)
             except Exception as e:
                 print(f"ZCQL Execution Error: {e}")
-                return []
+                raise e
         else:
             return self._mock_query(query)
 
@@ -103,5 +106,5 @@ class CatalystClient:
             return [{"CourtID": 1, "CourtName": "District Court", "DistrictID": 1, "StateID": 1, "Active": True}]
         return []
 
-def get_catalyst_client() -> CatalystClient:
-    return CatalystClient()
+def get_catalyst_client(request=None) -> CatalystClient:
+    return CatalystClient(request=request)
