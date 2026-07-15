@@ -1,14 +1,25 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Map as MapIcon, Filter, X, AlertTriangle, Clock, MapPin, ChevronDown } from 'lucide-react'
+import MarkerClusterGroup from 'react-leaflet-markercluster'
+import { Map as MapIcon, Filter, X, AlertTriangle, Clock, MapPin, ChevronDown, ExternalLink, Shield, Radio } from 'lucide-react'
 import { PageHeader, Badge } from '@/components/common/PageElements'
 import { RiskBadge } from '@/components/common/InsightCard'
 import { useCrimes } from '@/data/crimes'
 import { cn } from '@/lib/utils'
 import type { FIR, CrimeHead, CrimeGroup } from '@/types/crime'
 import 'leaflet/dist/leaflet.css'
+// @ts-ignore
+import 'react-leaflet-markercluster/styles'
+
+/* ── Severity-based marker colors ─────────────────────────────── */
+const severityColors: Record<string, string> = {
+  Critical: '#EF4444', // red
+  High:     '#EF4444', // red
+  Medium:   '#F97316', // orange
+  Low:      '#3B82F6', // blue
+}
 
 const crimeTypeColors: Record<string, string> = {
   'Theft': '#60A5FA',
@@ -27,22 +38,79 @@ const crimeTypeColors: Record<string, string> = {
   'Eve Teasing': '#FF4D6D',
 }
 
-function createIcon(color: string) {
+function createSeverityIcon(severity: string) {
+  const color = severityColors[severity] || '#3B82F6'
   return L.divIcon({
-    className: 'custom-marker',
+    className: 'custom-severity-marker',
     html: `<div style="
-      width: 14px; height: 14px; border-radius: 50%;
-      background: ${color}40; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-      border: 1.5px solid ${color};
-      box-shadow: none;
-    "></div>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
+      width: 16px; height: 16px; border-radius: 50%;
+      background: ${color};
+      border: 2.5px solid rgba(255,255,255,0.9);
+      box-shadow: 0 0 8px ${color}88, 0 0 20px ${color}44;
+      animation: marker-pulse 2s ease-in-out infinite;
+    "></div>
+    <style>
+      @keyframes marker-pulse {
+        0%, 100% { box-shadow: 0 0 8px ${color}88, 0 0 20px ${color}44; transform: scale(1); }
+        50% { box-shadow: 0 0 14px ${color}aa, 0 0 30px ${color}66; transform: scale(1.1); }
+      }
+    </style>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -10],
   })
+}
+
+/* ── Auto-fit bounds component ────────────────────────────────── */
+function FitBounds({ crimes }: { crimes: FIR[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (crimes.length === 0) return
+
+    const validCrimes = crimes.filter(
+      c => c.location.latitude >= 11.5 && c.location.latitude <= 18.5 &&
+           c.location.longitude >= 74.0 && c.location.longitude <= 78.5
+    )
+
+    if (validCrimes.length === 0) return
+
+    const bounds = L.latLngBounds(
+      validCrimes.map(c => [c.location.latitude, c.location.longitude] as [number, number])
+    )
+
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 })
+  }, [crimes, map])
+
+  return null
+}
+
+/* ── Severity badge for popup ─────────────────────────────────── */
+function SeverityBadge({ severity }: { severity: string }) {
+  const colorMap: Record<string, string> = {
+    Critical: 'bg-red-500/20 text-red-400 border-red-500/40',
+    High:     'bg-red-500/20 text-red-400 border-red-500/40',
+    Medium:   'bg-orange-500/20 text-orange-400 border-orange-500/40',
+    Low:      'bg-blue-500/20 text-blue-400 border-blue-500/40',
+  }
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
+      colorMap[severity] || colorMap.Low
+    )}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: severityColors[severity] || '#3B82F6' }} />
+      {severity}
+    </span>
+  )
 }
 
 const allCrimeGroups: CrimeGroup[] = ['Critical', 'High', 'Medium', 'Low']
 const allCrimeHeads: CrimeHead[] = ['Theft', 'Robbery', 'Assault', 'Burglary', 'Murder', 'Kidnapping', 'Fraud', 'Cybercrime', 'Drug Offense', 'Vandalism', 'Domestic Violence', 'Vehicle Theft', 'Chain Snatching', 'Eve Teasing']
+
+const karnatakaBounds: L.LatLngBoundsExpression = [
+  [11.5, 74.0], // South-West
+  [18.5, 78.6], // North-East
+]
 
 export default function CrimeMapPage() {
   const { crimes, loading } = useCrimes()
@@ -61,14 +129,10 @@ export default function CrimeMapPage() {
       if (filters.districts.length > 0 && !filters.districts.includes(c.district)) return false
       if (filters.crimeGroups.length > 0 && !filters.crimeGroups.includes(c.crimeGroup)) return false
       
-      // Map Validation Logic: Ensure incident coordinates strictly fall within Karnataka state boundaries
-      const isWithinKarnataka = c.location.latitude >= 11.5 && c.location.latitude <= 18.5 && 
-                               c.location.longitude >= 74.0 && c.location.longitude <= 78.5;
-      if (!isWithinKarnataka) return false;
-
+      // Map Validation Logic: Handled centrally by useCrimes turf.js point-in-polygon
       return true
     })
-  }, [filters])
+  }, [crimes, filters])
 
   const toggleFilter = <T extends string>(arr: T[], item: T): T[] => {
     return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]
@@ -189,9 +253,28 @@ export default function CrimeMapPage() {
                   </div>
                 </div>
 
-                {/* Legend */}
+                {/* Severity Legend */}
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Legend</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Severity Legend</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#EF4444' }} />
+                      High / Critical
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#F97316' }} />
+                      Medium
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                      Low
+                    </div>
+                  </div>
+                </div>
+
+                {/* Crime Type Legend */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Crime Types</h4>
                   <div className="space-y-1.5">
                     {Object.entries(crimeTypeColors).slice(0, 8).map(([type, color]) => (
                       <div key={type} className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -211,6 +294,9 @@ export default function CrimeMapPage() {
           <MapContainer
             center={[15.3173, 75.7139]}
             zoom={7}
+            minZoom={6}
+            maxBounds={karnatakaBounds}
+            maxBoundsViscosity={1.0}
             style={{ height: '100%', width: '100%' }}
             zoomControl={false}
           >
@@ -218,23 +304,102 @@ export default function CrimeMapPage() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
-            {filteredCrimes.map((crime) => (
-              <Marker
-                key={crime.id}
-                position={[crime.location.latitude, crime.location.longitude]}
-                icon={createIcon(crimeTypeColors[crime.crimeHead] || '#60A5FA')}
-                eventHandlers={{
-                  click: () => setSelectedFIR(crime)
-                }}
-              >
-                <Popup>
-                  <div className="text-xs">
-                    <strong>{crime.crimeHead}</strong> — {crime.firNumber}<br />
-                    {crime.district} • {crime.crimeGroup}
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            <FitBounds crimes={filteredCrimes} />
+            <MarkerClusterGroup
+              chunkedLoading
+              maxClusterRadius={40}
+              spiderfyOnMaxZoom
+              showCoverageOnHover={false}
+              iconCreateFunction={(cluster: any) => {
+                const count = cluster.getChildCount()
+                const children = cluster.getAllChildMarkers()
+                // Determine cluster color based on highest severity child
+                let hasRed = false
+                let hasOrange = false
+                children.forEach((m: any) => {
+                  const el = m._icon?.querySelector('div')
+                  if (!el) return
+                  const bg = el.style.background
+                  if (bg?.includes('#EF4444')) hasRed = true
+                  if (bg?.includes('#F97316')) hasOrange = true
+                })
+                const clusterColor = hasRed ? '#EF4444' : hasOrange ? '#F97316' : '#3B82F6'
+                return L.divIcon({
+                  html: `<div style="
+                    width: 36px; height: 36px; border-radius: 50%;
+                    background: ${clusterColor}30;
+                    border: 2px solid ${clusterColor};
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 12px; font-weight: 700; color: ${clusterColor};
+                    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+                  ">${count}</div>`,
+                  className: 'custom-cluster-icon',
+                  iconSize: L.point(36, 36),
+                })
+              }}
+            >
+              {filteredCrimes.map((crime) => (
+                <Marker
+                  key={crime.id}
+                  position={[crime.location.latitude, crime.location.longitude]}
+                  icon={createSeverityIcon(crime.crimeGroup)}
+                  eventHandlers={{
+                    click: () => setSelectedFIR(crime)
+                  }}
+                >
+                  <Popup className="mosaic-popup" maxWidth={300} minWidth={260}>
+                    <div className="p-0">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-mono font-bold text-blue-400 tracking-wide">{crime.firNumber}</span>
+                        <SeverityBadge severity={crime.crimeGroup} />
+                      </div>
+
+                      {/* Crime type */}
+                      <h3 className="text-sm font-bold text-white mb-1">{crime.crimeHead}</h3>
+
+                      {/* Details grid */}
+                      <div className="space-y-1.5 mt-2">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Shield className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Station:</span>
+                          <span className="text-slate-200 font-medium">{crime.location.policeUnit}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="text-slate-400">District:</span>
+                          <span className="text-slate-200 font-medium">{crime.district}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Radio className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Status:</span>
+                          <span className={cn(
+                            "font-medium",
+                            crime.status === 'Open' ? 'text-yellow-400' :
+                            crime.status === 'Under Investigation' ? 'text-orange-400' :
+                            crime.status === 'Closed' ? 'text-green-400' : 'text-slate-300'
+                          )}>{crime.status}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="text-slate-400">Reported:</span>
+                          <span className="text-slate-200">{new Date(crime.reportedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+
+                      {/* Action button */}
+                      <button
+                        onClick={() => setSelectedFIR(crime)}
+                        className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-semibold transition-colors border border-blue-500/30"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open Case Details
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MarkerClusterGroup>
           </MapContainer>
 
           {/* Map Stats Overlay */}
@@ -247,6 +412,16 @@ export default function CrimeMapPage() {
             <div className="text-xs">
               <span className="text-muted-foreground">Critical:</span>
               <span className="text-red-400 font-semibold ml-1">{filteredCrimes.filter(c => c.crimeGroup === 'Critical').length}</span>
+            </div>
+            <div className="w-px h-4 bg-border" />
+            <div className="text-xs">
+              <span className="text-muted-foreground">High:</span>
+              <span className="text-red-400 font-semibold ml-1">{filteredCrimes.filter(c => c.crimeGroup === 'High').length}</span>
+            </div>
+            <div className="w-px h-4 bg-border" />
+            <div className="text-xs">
+              <span className="text-muted-foreground">Medium:</span>
+              <span className="text-orange-400 font-semibold ml-1">{filteredCrimes.filter(c => c.crimeGroup === 'Medium').length}</span>
             </div>
           </div>
         </div>
@@ -282,6 +457,7 @@ export default function CrimeMapPage() {
 
                   <div className="space-y-3">
                     <InfoRow icon={MapPin} label="Location" value={`${selectedFIR.location.address}, ${selectedFIR.district}`} />
+                    <InfoRow icon={Shield} label="Police Station" value={selectedFIR.location.policeUnit} />
                     <InfoRow icon={Clock} label="Reported" value={new Date(selectedFIR.reportedAt).toLocaleString()} />
                     <InfoRow icon={AlertTriangle} label="Status" value={selectedFIR.status} />
                   </div>
@@ -290,7 +466,7 @@ export default function CrimeMapPage() {
                     <div>
                       <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Accused</h5>
                       {selectedFIR.suspects.map(s => (
-                        <div key={s.id} className="p-2 bg-secondary/30 rounded-lg text-xs">
+                        <div key={s.id} className="p-2 bg-secondary/30 rounded-lg text-xs mb-1.5">
                           <p className="font-medium text-foreground">{s.name}</p>
                           <p className="text-muted-foreground">Age: {s.age} • {s.gender} • {s.status}</p>
                         </div>
@@ -302,7 +478,7 @@ export default function CrimeMapPage() {
                     <div>
                       <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Vehicles</h5>
                       {selectedFIR.vehicles.map(v => (
-                        <div key={v.id} className="p-2 bg-secondary/30 rounded-lg text-xs">
+                        <div key={v.id} className="p-2 bg-secondary/30 rounded-lg text-xs mb-1.5">
                           <p className="font-medium text-foreground">{v.color} {v.make} {v.model}</p>
                           <p className="text-muted-foreground">{v.plateNumber}</p>
                         </div>

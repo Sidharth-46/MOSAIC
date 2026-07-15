@@ -260,3 +260,44 @@ svg {
 .leaflet-popup-tip {
   background: rgba(18, 22, 30, 0.95) !important;
 }
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94A3B8 !important;
+  font-size: 18px !important;
+  top: 4px !important;
+  right: 8px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #F8FAFC !important;
+}
+
+/* Marker cluster overrides */
+.custom-cluster-icon {
+  background: transparent !important;
+}
+
+.marker-cluster {
+  background: transparent !important;
+}
+
+.marker-cluster div {
+  background: transparent !important;
+}
+
+/* Custom severity marker — remove Leaflet default box */
+.custom-severity-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Marker pulse animation */
+@keyframes marker-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
