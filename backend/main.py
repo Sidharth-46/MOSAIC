@@ -1,6 +1,5 @@
 import os
 import sys
-
 import platform
 
 # Use Linux vendored dependencies ONLY when deployed to Catalyst (Linux)
@@ -22,14 +21,7 @@ app = FastAPI(
     description=settings.DESCRIPTION
 )
 
-# CORS - Handled by Catalyst AppSail automatically
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"], # In production, restrict this
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+
 
 @app.middleware("http")
 async def catalyst_initializer_middleware(request: Request, call_next):

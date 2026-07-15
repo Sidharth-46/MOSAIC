@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
-export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/app/' : '/',
+export default defineConfig(() => ({
+  base: '/app/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

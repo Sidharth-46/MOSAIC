@@ -1,7 +1,7 @@
 {
   "app_name": "backend",
-  "stack": "python_3_9",
+  "stack": "python_3_11",
   "build_path": ".",
-  "command": "sh debug_start.sh",
+  "command": "python3 main.py",
   "env_variables": {}
 }

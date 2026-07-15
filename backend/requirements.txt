@@ -8,3 +8,4 @@ faker==24.4.0
 zcatalyst-sdk==1.3.0
 exceptiongroup
 groq==0.15.0
+asyncpg
