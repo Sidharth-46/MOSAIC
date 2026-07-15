@@ -43,7 +43,7 @@ export default function AIAssistantPage() {
     setIsTyping(true)
 
     try {
-      const response = await fetchFromAPI<{response: string}>('/copilot', {
+      const response = await fetchFromAPI<{response: string, grounded: boolean}>('/copilot', {
         method: 'POST',
         body: JSON.stringify({ message: text })
       })
@@ -52,6 +52,7 @@ export default function AIAssistantPage() {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant' as const,
         content: response.response,
+        grounded: response.grounded,
         timestamp: new Date().toISOString()
       }
       
@@ -61,6 +62,7 @@ export default function AIAssistantPage() {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant' as const,
         content: 'Error: Failed to connect to the Investigative Copilot.',
+        grounded: false,
         timestamp: new Date().toISOString()
       }])
     } finally {
@@ -75,8 +77,8 @@ export default function AIAssistantPage() {
         description="Natural language queries for crime data and predictive analytics"
         icon={BrainCircuit}
         actions={
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary font-medium">
-            <Bot className="w-4 h-4" /> Model: MOSAIC-LLM-v2
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-500 font-medium">
+            <Bot className="w-4 h-4" /> 🟢 Grounded AI • Powered by Groq • Responses based on MOSAIC data only
           </div>
         }
       />
@@ -107,20 +109,32 @@ export default function AIAssistantPage() {
                   "px-4 py-3 rounded-2xl text-sm leading-relaxed",
                   msg.role === 'user' 
                     ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                    : "bg-secondary/40 border border-border/50 text-foreground rounded-tl-sm"
+                    : "bg-secondary/40 border border-border/50 text-foreground rounded-tl-sm relative"
                 )}>
                   {/* Basic markdown-like rendering for dummy responses */}
                   {msg.content.split('\n').map((line: string, j: number) => {
                     if (line.startsWith('**')) return <p key={j} className="font-bold mt-2 mb-1 text-primary-foreground/90">{line.replace(/\*\*/g, '')}</p>
-                    if (line.startsWith('•')) return <li key={j} className="ml-2 mb-1">{line.substring(1)}</li>
+                    if (line.startsWith('•') || line.startsWith('-')) return <li key={j} className="ml-2 mb-1">{line.substring(1)}</li>
                     if (line.trim() === '') return <div key={j} className="h-2" />
                     return <p key={j}>{line.replace(/\*\*/g, '')}</p>
                   })}
                   <div className={cn(
-                    "text-[10px] mt-2 opacity-60 text-right",
+                    "flex items-center justify-between mt-3 opacity-80",
                     msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
                   )}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {msg.role === 'assistant' && msg.grounded !== undefined && (
+                      <span className={cn(
+                        "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                        msg.grounded 
+                          ? "bg-green-500/20 text-green-500 border border-green-500/30" 
+                          : "bg-red-500/10 text-red-400 border border-red-500/20"
+                      )}>
+                        {msg.grounded ? '● Grounded Response' : '○ Ungrounded / No Data'}
+                      </span>
+                    )}
+                    <div className="text-[10px] ml-auto">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
                 </div>
               </motion.div>

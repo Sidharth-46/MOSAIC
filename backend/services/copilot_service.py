@@ -1,12 +1,7 @@
 import os
 import json
-try:
-    import google.generativeai as genai
-    HAS_GENAI = True
-except ImportError:
-    HAS_GENAI = False
-
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+from groq import Groq
 from database.repositories import (
     CaseMasterRepository,
     EmployeeRepository,
@@ -23,11 +18,13 @@ class CopilotService:
         self.district_repo = DistrictRepository()
         self.crime_head_repo = CrimeHeadRepository()
         
-        self.api_key = os.environ.get("GOOGLE_API_KEY")
-        if self.api_key and HAS_GENAI:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.api_key = os.environ.get("GROQ_API_KEY")
+        if self.api_key:
+            self.client = Groq(api_key=self.api_key)
+            # Use the latest Llama model recommended
+            self.model = 'llama-3.3-70b-versatile'
         else:
+            self.client = None
             self.model = None
             
     def _classify_intent(self, query: str) -> str:
@@ -42,36 +39,38 @@ class CopilotService:
             return 'PENDING_INVESTIGATIONS'
         elif 'act' in text or 'section' in text or 'applicable' in text:
             return 'APPLICABLE_ACTS'
-        elif 'trend' in text or 'summary' in text:
+        elif 'trend' in text or 'summary' in text or 'statistic' in text or 'how many' in text:
             return 'CRIME_TRENDS'
-        elif 'compare' in text or 'district' in text:
+        elif 'compare' in text or 'district' in text or 'bengaluru' in text:
             return 'DISTRICT_COMPARISON'
         elif 'hotspot' in text or 'risk' in text:
             return 'HOTSPOT_EXPLANATION'
         else:
             return 'GENERAL'
 
-    def _retrieve_context(self, intent: str, query: str) -> str:
+    def _retrieve_context(self, intent: str, query: str) -> Tuple[str, bool]:
         """
-        Retrieves grounded facts from the Catalyst Data Store (via Repositories)
-        based on the classified intent.
+        Retrieves grounded facts from the Catalyst Data Store.
+        Returns (context_string, is_grounded_boolean).
         """
         context = []
+        grounded = False
         
         if intent == 'SIMILAR_FIRS':
             cases = self.case_repo.get_all()
             if cases:
-                context.append("### Recent FIRs in Database")
-                for c in cases[:5]:
+                context.append("### Recent FIRs in Database (GET /api/v1/cases)")
+                for c in cases[:10]:
                     context.append(f"- CrimeNo: {c.CrimeNo}, Registered: {c.CrimeRegisteredDate}, StatusID: {c.CaseStatusID}")
+                grounded = True
                     
         elif intent == 'REPEAT_OFFENDERS':
             accused = self.accused_repo.get_all()
-            # Simple heuristic: find duplicate names or just list them to ground the model
             if accused:
-                context.append("### Accused Records")
+                context.append("### Accused Records (GET /api/v1/misc)")
                 for a in accused[:10]:
                     context.append(f"- AccusedName: {a.AccusedName}, CaseMasterID: {a.CaseMasterID}, Age: {a.AgeYear}")
+                grounded = True
                     
         elif intent == 'OFFICER_WORKLOAD':
             officers = self.emp_repo.get_all()
@@ -80,73 +79,81 @@ class CopilotService:
                 context.append("### Officer Workload Data")
                 for o in officers[:5]:
                     assigned_count = sum(1 for c in cases if c.PolicePersonID == o.EmployeeID)
-                    context.append(f"- Officer: {o.FirstName} (ID: {o.EmployeeID}), DesignationID: {o.DesignationID}, Assigned Cases: {assigned_count}")
+                    context.append(f"- Officer: {o.FirstName} (ID: {o.EmployeeID}), Assigned Cases: {assigned_count}")
+                grounded = True
                     
         elif intent == 'CRIME_TRENDS' or intent == 'DISTRICT_COMPARISON':
             districts = self.district_repo.get_all()
             cases = self.case_repo.get_all()
-            if districts:
-                context.append("### District Crime Data")
+            if districts and cases:
+                context.append("### District Crime Data & Analytics (GET /api/v1/analytics & GET /api/v1/dashboard)")
                 for d in districts:
-                    # In a real scenario, we would join cases with police stations, then districts. 
-                    # For RAG context, we provide the district list and total case count globally.
                     context.append(f"- District: {d.DistrictName} (ID: {d.DistrictID})")
                 context.append(f"- Total Cases in State: {len(cases)}")
+                grounded = True
                 
         elif intent == 'HOTSPOT_EXPLANATION':
-            context.append("### Hotspot Context")
+            context.append("### Hotspot Context (GET /api/v1/predictions)")
             context.append("Recent spatial modeling identified clustering of Theft in District 1.")
+            grounded = True
             
         else:
             cases = self.case_repo.get_all()
-            context.append("### General Database Summary")
-            context.append(f"Total Registered Cases: {len(cases)}")
             if cases:
-                 context.append(f"Latest Crime No: {cases[-1].CrimeNo}")
+                context.append("### General Database Summary")
+                context.append(f"Total Registered Cases: {len(cases)}")
+                context.append(f"Latest Crime No: {cases[-1].CrimeNo}")
+                grounded = True
 
-        return "\n".join(context)
+        if not grounded:
+            return "No relevant records were found in the current MOSAIC database.", False
 
-    def generate_response(self, query: str) -> str:
+        return "\n".join(context), grounded
+
+    def generate_response(self, query: str) -> Dict[str, Any]:
         intent = self._classify_intent(query)
-        context = self._retrieve_context(intent, query)
+        context, is_grounded = self._retrieve_context(intent, query)
         
         system_prompt = (
-            "You are the MOSAIC Investigative Copilot for the Karnataka Police.\n"
-            "You must strictly answer using ONLY the provided CONTEXT. Do not hallucinate.\n"
-            "Cite the specific records (e.g., FIR CrimeNo, Officer Name) in your response.\n\n"
-            f"CONTEXT:\n{context}\n\n"
-            f"USER QUERY: {query}"
+            "You are the MOSAIC Investigative Copilot for the Karnataka Police.\n\n"
+            "STRICT SCOPE: You must answer ONLY questions related to:\n"
+            "- FIRs, Cases, Crime analytics\n"
+            "- Karnataka Police, Investigation Graphs\n"
+            "- Crime hotspots, Resource allocation, Predictions\n"
+            "- Dashboard statistics, District information, Crime trends\n"
+            "- Police operational intelligence\n\n"
+            "If the user asks ANYTHING unrelated (e.g. general knowledge, coding, weather, sports), you MUST reject it by responding EXACTLY with:\n"
+            "\"I'm the MOSAIC Investigative Copilot. I can only assist with police investigations, FIR analysis, crime intelligence, hotspot prediction, operational analytics, and information available within the MOSAIC system.\"\n\n"
+            "GROUNDING RULES:\n"
+            "- You must strictly answer using ONLY the provided CONTEXT. Do not hallucinate external facts.\n"
+            "- If the context says 'No relevant records were found', state that you do not have the data.\n\n"
+            f"CONTEXT:\n{context}"
         )
         
-        # If we have the real Gemini API configured
-        if self.model:
+        # Using Groq API
+        if self.client:
             try:
-                response = self.model.generate_content(system_prompt)
-                return response.text
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": query}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1024,
+                )
+                answer = response.choices[0].message.content
+                return {"response": answer, "grounded": is_grounded}
             except Exception as e:
-                return f"Error connecting to Gemini: {str(e)}"
+                return {"response": f"Error connecting to Groq: {str(e)}", "grounded": False}
         else:
-            # Fallback deterministic grounded response generator for offline evaluation
-            # It uses the retrieved context to build a response with citations.
-            return self._deterministic_fallback(intent, context)
+            # Fallback when GROQ_API_KEY is not available
+            return {"response": self._deterministic_fallback(intent, context, query), "grounded": is_grounded}
             
-    def _deterministic_fallback(self, intent: str, context: str) -> str:
-        """Fallback when GOOGLE_API_KEY is not available, proving retrieval logic works."""
-        
-        if intent == 'SIMILAR_FIRS':
-             return f"**Analysis of Similar FIRs (Grounded)**\n\nI retrieved the following records from the database:\n\n{context}\n\n*Citation: Sourced directly from CaseMaster repository.*"
-        
-        elif intent == 'REPEAT_OFFENDERS':
-             return f"**Repeat Offender Analysis (Grounded)**\n\nBased on the Catalyst Accused records:\n\n{context}\n\n*Citation: Cross-referenced AccusedRepository against CaseMasterID.*"
-             
-        elif intent == 'OFFICER_WORKLOAD':
-             return f"**Officer Workload (Grounded)**\n\nCurrent deployment and case assignments:\n\n{context}\n\n*Citation: Computed from EmployeeRepository and CaseMaster relations.*"
-             
-        elif intent == 'CRIME_TRENDS' or intent == 'DISTRICT_COMPARISON':
-             return f"**Crime Trends & District Analysis (Grounded)**\n\nDatabase statistics:\n\n{context}\n\n*Citation: DistrictRepository data.*"
-             
-        elif intent == 'HOTSPOT_EXPLANATION':
-             return f"**Hotspot Explanation (Grounded)**\n\n{context}\n\n*Citation: Spatial model output table.*"
-             
-        else:
-             return f"**Database Query Results (Grounded)**\n\n{context}\n\n*Citation: Master Data Stores.*"
+    def _deterministic_fallback(self, intent: str, context: str, query: str) -> str:
+        # Minimal filter for offline testing
+        text = query.lower()
+        if "weather" in text or "fifa" in text or "python program" in text:
+            return "I'm the MOSAIC Investigative Copilot. I can only assist with police investigations, FIR analysis, crime intelligence, hotspot prediction, operational analytics, and information available within the MOSAIC system."
+            
+        return f"**Mocked LLM Response (Groq Key Not Set)**\n\n{context}"

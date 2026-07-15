@@ -13,5 +13,5 @@ copilot_service = CopilotService()
 
 @router.post("")
 async def chat_copilot(req: CopilotRequest):
-    response_text = copilot_service.generate_response(req.message)
-    return {"response": response_text}
+    result = copilot_service.generate_response(req.message)
+    return result

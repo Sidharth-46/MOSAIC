@@ -1,15 +1,17 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { Network, ZoomIn, ZoomOut, Maximize, FileText, X } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { Network, ZoomIn, ZoomOut, Maximize, FileText, X, Search, Filter, ArrowLeft } from 'lucide-react'
 import ForceGraph2D from 'react-force-graph-2d'
 import type { ForceGraphMethods } from 'react-force-graph-2d'
-import { PageHeader, Badge } from '@/components/common/PageElements'
+import { PageHeader } from '@/components/common/PageElements'
 import { useGraph } from '@/data/graph'
+import { useCrimes } from '@/data/crimes'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { GraphNode } from '@/types/graph'
+import type { FIR } from '@/types/crime'
 
-export default function RelationshipGraphPage() {
-  const { graphData, loading } = useGraph()
+function GraphView({ caseId, onBack }: { caseId: string, onBack: () => void }) {
+  const { graphData, loading } = useGraph(caseId)
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -39,7 +41,6 @@ export default function RelationshipGraphPage() {
     setSelectedNode(node)
     
     if (fgRef.current) {
-      // Zoom in slightly on the node
       fgRef.current.centerAt(node.x, node.y, 1000)
       fgRef.current.zoom(2.5, 1000)
     }
@@ -67,20 +68,42 @@ export default function RelationshipGraphPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground font-medium">Loading investigation graph...</p>
+      </div>
+    )
+  }
+
+  if (!graphData.nodes || graphData.nodes.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="mb-4">
+          <button 
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Case List
+          </button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center bg-background/50 rounded-xl border border-border/50">
+          <Network className="w-12 h-12 mb-4 opacity-20" />
+          <p className="text-lg font-medium text-foreground">No investigation graph is available for this case.</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <PageHeader
-        title="Entity Relationship Graph"
-        description="Visual analysis of connections between cases, accused, and evidence"
-        icon={Network}
-      />
-
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="mb-4">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Case List
+        </button>
+      </div>
       <div className="flex-1 flex gap-4 min-h-0 relative">
         {/* Main Graph Area */}
         <div 
@@ -150,9 +173,7 @@ export default function RelationshipGraphPage() {
                 { type: 'Investigating Officer', color: '#38BDF8' },
                 { type: 'Evidence', color: '#22C55E' },
                 { type: 'Acts', color: '#60A5FA' },
-                { type: 'Sections', color: '#F59E0B' },
-                { type: 'Chargesheet', color: '#38BDF8' },
-                { type: 'Court', color: '#94A3B8' }
+                { type: 'Sections', color: '#F59E0B' }
               ].map(item => (
                 <div key={item.type} className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
@@ -232,6 +253,153 @@ export default function RelationshipGraphPage() {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  )
+}
+
+export default function RelationshipGraphPage() {
+  const { crimes, loading } = useCrimes()
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
+  
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterDistrict, setFilterDistrict] = useState('All')
+  const [filterCrimeHead, setFilterCrimeHead] = useState('All')
+  const [filterStatus, setFilterStatus] = useState('All')
+
+  const uniqueDistricts = useMemo(() => Array.from(new Set(crimes.map(c => c.district))), [crimes])
+  const uniqueCrimeHeads = useMemo(() => Array.from(new Set(crimes.map(c => c.crimeHead))), [crimes])
+  const uniqueStatuses = useMemo(() => Array.from(new Set(crimes.map(c => c.status))), [crimes])
+
+  const filteredCrimes = useMemo(() => {
+    return crimes.filter(crime => {
+      const matchesSearch = 
+        crime.firNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        crime.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        crime.crimeHead.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesDistrict = filterDistrict === 'All' || crime.district === filterDistrict
+      const matchesCrimeHead = filterCrimeHead === 'All' || crime.crimeHead === filterCrimeHead
+      const matchesStatus = filterStatus === 'All' || crime.status === filterStatus
+
+      return matchesSearch && matchesDistrict && matchesCrimeHead && matchesStatus
+    })
+  }, [crimes, searchQuery, filterDistrict, filterCrimeHead, filterStatus])
+
+  return (
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
+      <PageHeader
+        title="Investigation Graph"
+        description="Visual analysis of connections between cases, accused, and evidence"
+        icon={Network}
+      />
+
+      {!selectedCaseId ? (
+        <div className="flex-1 flex flex-col min-h-0 bg-background/50 rounded-xl border border-border/50">
+          <div className="p-4 border-b border-border/50 space-y-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 relative min-w-[200px]">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search FIR, District, or Crime Type..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <select 
+                  value={filterDistrict} 
+                  onChange={e => setFilterDistrict(e.target.value)}
+                  className="px-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground outline-none"
+                >
+                  <option value="All">All Districts</option>
+                  {uniqueDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select 
+                  value={filterCrimeHead} 
+                  onChange={e => setFilterCrimeHead(e.target.value)}
+                  className="px-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground outline-none"
+                >
+                  <option value="All">All Crime Types</option>
+                  {uniqueCrimeHeads.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select 
+                  value={filterStatus} 
+                  onChange={e => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground outline-none"
+                >
+                  <option value="All">All Statuses</option>
+                  {uniqueStatuses.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4">
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredCrimes.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                <Network className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-lg font-medium">Investigation Graph</p>
+                <p className="text-sm mt-2 max-w-sm text-center">Select a case from the list to visualize relationships between suspects, victims, evidence, locations and connected entities.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/50 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-3 px-4 font-semibold">FIR Number</th>
+                      <th className="pb-3 px-4 font-semibold">Crime Head</th>
+                      <th className="pb-3 px-4 font-semibold">District</th>
+                      <th className="pb-3 px-4 font-semibold">Police Station</th>
+                      <th className="pb-3 px-4 font-semibold">Status</th>
+                      <th className="pb-3 px-4 font-semibold">Reported Date</th>
+                      <th className="pb-3 px-4 font-semibold text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCrimes.map((crime) => (
+                      <tr key={crime.id} className="border-b border-border/10 hover:bg-secondary/20 transition-colors">
+                        <td className="py-3 px-4 font-medium text-sm text-foreground">{crime.firNumber}</td>
+                        <td className="py-3 px-4 text-sm text-foreground">{crime.crimeHead}</td>
+                        <td className="py-3 px-4 text-sm text-foreground">{crime.district}</td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">{crime.location.policeUnit || 'N/A'}</td>
+                        <td className="py-3 px-4">
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                            crime.status === 'Open' || crime.status === 'Under Investigation' ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                            crime.status === 'Closed' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                            "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                          )}>
+                            {crime.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {new Date(crime.reportedAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => setSelectedCaseId(crime.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md text-xs font-medium transition-colors"
+                          >
+                            <Network className="w-3.5 h-3.5" /> View Graph
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <GraphView caseId={selectedCaseId} onBack={() => setSelectedCaseId(null)} />
+      )}
     </div>
   )
 }
