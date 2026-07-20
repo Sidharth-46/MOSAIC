@@ -49,7 +49,7 @@ class MockProvider(IngestionProvider):
                     "lat": 12.9 + random.uniform(-0.1, 0.1),
                     "lng": 77.5 + random.uniform(-0.1, 0.1),
                     "station_ext_id": random.choice(self._cache_stations)["ext_id"],
-                    "crime_head_ext": "Robbery", # Simplified string
+                    "crime_head_ext": random.choice(["Robbery", "Assault", "Burglary", "Fraud", "Vehicle Theft"]),
                     "officer_ext_id": random.choice(self._cache_officers)["ext_id"]
                 })
         return self._cache_cases

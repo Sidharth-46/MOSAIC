@@ -15,7 +15,7 @@ class Transformer:
             "units": {},
             "stations": {},
             "officers": {},
-            "crime_heads": {},
+            "crime_heads": {"Robbery": 1, "Assault": 2, "Burglary": 3, "Fraud": 4, "Vehicle Theft": 5},
             "cases": {},
             "case_status": {"Open": 1, "Closed": 2},
             "unit_types": {"Station": 1, "Division": 2},
